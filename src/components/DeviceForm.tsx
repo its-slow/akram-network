@@ -52,9 +52,20 @@ export function DeviceForm({ onSave, onUpdate, onCancelEdit, initialData }: Devi
   const [abovePppoeUser, setAbovePppoeUser] = useState("");
   const [abovePppoePass, setAbovePppoePass] = useState("");
 
-  // Pre-fill fields when editing
+  // التعديل هنا: تصفير الحقول لو مفيش initialData
   useEffect(() => {
-    if (!initialData) return;
+    if (!initialData) {
+      setPosition("تحت");
+      setClientName(""); setClientPhone(""); setClientIp(""); setClientDevice("");
+      setServiceType("برود باند (Broadband)"); setConnType("📡 هوائي (Wireless)");
+      setPppoeUser(""); setPppoePass(""); setSwitchName("");
+      setRegion(""); setAboveIp(""); setAboveDevice("");
+      setWorkMode("استقبال (Station)"); setLinkType("📡 واي فاي / مايكرويف");
+      setAbovePhone(""); setConnectedTo(""); setWifiName(""); setWifiPass("");
+      setAbovePppoeUser(""); setAbovePppoePass("");
+      return;
+    }
+    
     setPosition(initialData.position ?? "تحت");
     if (initialData.position === "تحت") {
       setClientName(initialData.name ?? "");
@@ -169,7 +180,6 @@ export function DeviceForm({ onSave, onUpdate, onCancelEdit, initialData }: Devi
 
   return (
     <div className="space-y-4">
-      {/* Edit mode banner */}
       {isEditing && (
         <div className="flex items-center justify-between bg-[#0c2a1a] border border-[#166534] rounded-xl px-4 py-2.5">
           <span className="text-[#4ade80] font-bold text-sm">✏️ وضع التعديل — يمكنك تعديل بيانات الجهاز المحدد</span>
@@ -182,7 +192,6 @@ export function DeviceForm({ onSave, onUpdate, onCancelEdit, initialData }: Devi
         </div>
       )}
 
-      {/* Position selector */}
       <div className="flex flex-wrap gap-3 items-center">
         <label className={labelCls}>تحديد مستوى الجهاز في الشبكة:</label>
         <select
