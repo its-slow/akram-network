@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { auth, getUserDevices, saveDeviceToUser, deleteDeviceFromUser } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Auth from "./Auth";
@@ -9,8 +9,7 @@ export default function NetworkApp() {
   const [user, setUser] = useState<any>(null);
   const [devices, setDevices] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState(""); // متغير البحث
-  const formContainerRef = useRef<HTMLDivElement>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     return onAuthStateChanged(auth, (currentUser) => {
@@ -19,61 +18,37 @@ export default function NetworkApp() {
     });
   }, []);
 
-  // ملء بيانات التعديل
-  useEffect(() => {
-    if (selectedItem && formContainerRef.current) {
-      setTimeout(() => {
-        const inputs = formContainerRef.current?.querySelectorAll('input');
-        inputs?.forEach((input) => {
-          if (input.placeholder === "اسم المشترك بالكامل...") input.value = selectedItem.name || "";
-          if (input.placeholder === "رقم موبايل العميل...") input.value = selectedItem.phone || "";
-          if (input.placeholder === "عنوان IP جهاز التحت...") input.value = selectedItem.ip || "";
-          if (input.placeholder === "مثال: NanoStation / Router...") input.value = selectedItem.type || "";
-          if (input.placeholder === "اسم مستخدم الباند...") input.value = selectedItem.username || "";
-          if (input.placeholder === "باسورد الباند...") input.value = selectedItem.password || "";
-        });
-      }, 100);
-    }
-  }, [selectedItem]);
-
   const loadDevices = async (uid: string) => {
     const data = await getUserDevices(uid);
     setDevices(data);
   };
 
-  // فلترة الأجهزة بناءً على البحث
-  const filteredDevices = devices.filter(d => 
-    d.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    d.ip?.includes(searchTerm)
-  );
-
+  // دالة الحفظ المباشرة (هتاخد الـ entry زي ما هو من الـ Form)
   const handleSave = async (entry: any) => {
     if (user) {
-      const inputs = formContainerRef.current?.querySelectorAll('input');
-      const updatedEntry = {
-        ...entry,
-        name: inputs?.[0]?.value || entry.name,
-        phone: inputs?.[1]?.value || entry.phone,
-        ip: inputs?.[2]?.value || entry.ip,
-        type: inputs?.[3]?.value || entry.type,
-        username: inputs?.[4]?.value || entry.username,
-        password: inputs?.[5]?.value || entry.password,
-        cloud_id: selectedItem ? selectedItem.cloud_id : null
-      };
+      // لو فيه selectedItem، بنضيف الـ cloud_id عشان الـ Firebase يعرف إنه تعديل
+      const dataToSave = selectedItem 
+        ? { ...entry, cloud_id: selectedItem.cloud_id } 
+        : entry;
 
-      await saveDeviceToUser(user.uid, updatedEntry);
+      await saveDeviceToUser(user.uid, dataToSave);
       setSelectedItem(null);
       loadDevices(user.uid);
     }
   };
 
   const handleDelete = async () => {
-    if (user && selectedItem && confirm("هل أنت متأكد؟")) {
+    if (user && selectedItem && confirm("هل أنت متأكد من مسح الجهاز؟")) {
       await deleteDeviceFromUser(user.uid, selectedItem.cloud_id);
       setSelectedItem(null);
       loadDevices(user.uid);
     }
   };
+
+  const filteredDevices = devices.filter(d => 
+    d.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    d.ip?.includes(searchTerm)
+  );
 
   if (!user) return <Auth onLoginSuccess={() => {}} />;
 
@@ -81,8 +56,14 @@ export default function NetworkApp() {
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* الفورم */}
-        <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800" ref={formContainerRef}>
-          <DeviceForm key={selectedItem ? selectedItem.cloud_id : "new"} onSave={handleSave} />
+        <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+          {/* بنبعت البيانات المختارة للـ DeviceForm كـ props */}
+          <DeviceForm 
+            key={selectedItem ? selectedItem.cloud_id : "new"} 
+            onSave={handleSave} 
+            initialData={selectedItem} 
+          />
+          
           {selectedItem && (
             <div className="mt-6 p-4 border-t border-gray-700 space-y-2">
               <p className="text-yellow-500 font-bold">تعديل: {selectedItem.name}</p>
