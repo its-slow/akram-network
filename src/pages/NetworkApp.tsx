@@ -60,12 +60,14 @@ export default function NetworkApp() {
             ملاحظة: تأكد أن DeviceForm يقوم بتمرير البيانات لدالة onSave 
             ويستقبل initialData لإظهار البيانات في الخانات
           */}
-          <DeviceForm 
-            key={selectedItem ? selectedItem.cloud_id : "new"} 
-            onSave={handleSave} 
-            onCancel={() => setSelectedItem(null)} 
-            initialData={selectedItem} 
-          />
+          <<DeviceForm 
+  // الـ key ده هو اللي بيخلي React تمسح الكومبوننت القديم وتبني واحد جديد فاضي
+  key={selectedItem ? selectedItem.cloud_id : "new-form"} 
+  onSave={handleSave} 
+  onUpdate={handleUpdate}
+  onCancelEdit={() => setSelectedItem(null)}
+  initialData={selectedItem} 
+/>
           
           {selectedItem && (
             <div className="mt-4 pt-4 border-t border-gray-700">
