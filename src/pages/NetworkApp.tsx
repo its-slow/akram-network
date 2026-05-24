@@ -15,11 +15,7 @@ import { DeviceForm } from "@/components/DeviceForm";
 import { SearchBar } from "@/components/SearchBar";
 import { NetworkTree } from "@/components/NetworkTree";
 
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 export default function NetworkApp() {
-  const { signOut } = useClerk();
-  const { user } = useUser();
   const [allData, setAllData] = useState<DeviceEntry[]>([]);
   const [filteredData, setFilteredData] = useState<DeviceEntry[]>([]);
   const [searchText, setSearchText] = useState("");
@@ -88,7 +84,6 @@ export default function NetworkApp() {
 
   const handleUpdate = useCallback(async (updatedEntry: DeviceEntry) => {
     const cloudId = updatedEntry.cloud_id;
-    // Update local: remove old, add new
     deleteFromLocal(
       editingDevice?.ip ?? updatedEntry.ip,
       editingDevice?.name ?? updatedEntry.name
@@ -134,22 +129,12 @@ export default function NetworkApp() {
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white" dir="rtl">
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-lg md:text-2xl font-black text-white tracking-wide flex-1 text-center">
+        <div className="flex items-center justify-center">
+          <h1 className="text-lg md:text-2xl font-black text-white tracking-wide">
             ⚡ نظام البشمهندس أكرم جميل لإدارة الشبكة السحابية الذكي ⚡
           </h1>
-          <button
-            onClick={() => signOut({ redirectUrl: basePath || "/" })}
-            className="shrink-0 flex items-center gap-1.5 bg-[#18202f] hover:bg-[#252a38] border border-[#252a38] text-[#adb5c8] hover:text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
-            title={user?.primaryEmailAddress?.emailAddress}
-          >
-            <span>خروج</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
         </div>
 
-        {/* Form Card */}
         <div ref={formRef} className={`border rounded-2xl p-5 transition-colors ${editingDevice ? "bg-[#0c1f14] border-[#166534]" : "bg-[#121218] border-[#2d2d3a]"}`}>
           <DeviceForm
             key={editingDevice?._id ?? "new"}
@@ -160,10 +145,8 @@ export default function NetworkApp() {
           />
         </div>
 
-        {/* Search */}
         <SearchBar value={searchText} onChange={setSearchText} />
 
-        {/* Tree */}
         <div className="bg-[#121218] border border-[#2d2d3a] rounded-2xl p-5">
           <h2 className="text-[#38bdf8] font-bold text-base mb-4">أقسام الشبكة الرئيسية</h2>
           {loading ? (
@@ -179,7 +162,6 @@ export default function NetworkApp() {
           )}
         </div>
 
-        {/* Delete button */}
         <div className="flex justify-start">
           <button
             onClick={handleDelete}
