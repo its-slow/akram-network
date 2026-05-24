@@ -1,6 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { DeviceEntry, loadFromFirebase, loadFromLocal, saveToLocal, addToLocal, saveToFirebase, mergeData } from "@/lib/firebase";
+import { 
+  DeviceEntry, 
+  loadFromFirebase, 
+  loadFromLocal, 
+  saveToLocal, 
+  addToLocal, 
+  saveToFirebase, 
+  mergeData 
+} from "@/lib/firebase";
+
+// استيراد المكونات التي كانت في تطبيقك
+import { DeviceForm } from "@/components/DeviceForm";
+import { SearchBar } from "@/components/SearchBar";
+import { NetworkTree } from "@/components/NetworkTree";
 
 export default function NetworkApp() {
   const [allData, setAllData] = useState<DeviceEntry[]>([]);
@@ -8,12 +21,11 @@ export default function NetworkApp() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    // 1. قراءة البيانات المحلية فوراً للعرض
     const local = loadFromLocal();
+    // عرض المحلي فوراً لتجنب الشاشة السوداء
     setAllData(local.map((item, i) => ({ ...item, _id: `l-${i}` })));
 
     try {
-      // 2. محاولة جلب بيانات السحابة والدمج
       const cloud = await loadFromFirebase();
       if (cloud) {
         const combined = mergeData(cloud, local);
@@ -25,7 +37,7 @@ export default function NetworkApp() {
         saveToLocal(tagged);
       }
     } catch (e) {
-      console.error("تعذر الاتصال بالسحابة");
+      console.error("فشل الاتصال بالسحابة، نعمل محلياً");
     } finally {
       setLoading(false);
     }
@@ -34,14 +46,12 @@ export default function NetworkApp() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleSave = useCallback(async (entry: DeviceEntry) => {
-    // 1. الحفظ المحلي فوراً
     addToLocal(entry);
     setAllData(prev => [...prev, entry]);
     
-    // 2. الرفع للسحابة
     const success = await saveToFirebase(entry);
     if (success) {
-      toast.success("تم الحفظ والمزامنة");
+      toast.success("تم الحفظ والمزامنة بنجاح");
       loadData();
     } else {
       toast.warning("تم الحفظ محلياً فقط");
@@ -50,8 +60,15 @@ export default function NetworkApp() {
 
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white" dir="rtl">
-      {/* ضع هنا كود العرض الخاص بك (SearchBar, NetworkTree, إلخ) */}
-      {loading && <div>جاري التحميل...</div>}
+      <div className="p-4 space-y-6">
+        <SearchBar onSearch={(text) => console.log(text)} />
+        <DeviceForm onSave={handleSave} />
+        {loading ? (
+          <div className="text-center p-4">جاري التحميل...</div>
+        ) : (
+          <NetworkTree data={allData} />
+        )}
+      </div>
     </div>
   );
 }
