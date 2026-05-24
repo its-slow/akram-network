@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { auth, getUserDevices, saveDeviceToUser, deleteDeviceFromUser } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Auth from "./Auth";
@@ -10,6 +10,9 @@ export default function NetworkApp() {
   const [devices, setDevices] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // الـ ref ده هو اللي هنمسك بيه الفورم عشان نملى بياناته بالقوة
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (currentUser) => {
@@ -18,20 +21,44 @@ export default function NetworkApp() {
     });
   }, []);
 
+  // دالة ملء البيانات عند اختيار عميل
+  useEffect(() => {
+    if (selectedItem && formRef.current) {
+      setTimeout(() => {
+        const inputs = formRef.current?.querySelectorAll('input');
+        if (inputs && inputs.length >= 6) {
+          inputs[0].value = selectedItem.name || "";
+          inputs[1].value = selectedItem.phone || "";
+          inputs[2].value = selectedItem.ip || "";
+          inputs[3].value = selectedItem.type || "";
+          inputs[4].value = selectedItem.username || "";
+          inputs[5].value = selectedItem.password || "";
+        }
+      }, 100);
+    }
+  }, [selectedItem]);
+
   const loadDevices = async (uid: string) => {
     const data = await getUserDevices(uid);
     setDevices(data);
   };
 
-  // دالة الحفظ المباشرة (هتاخد الـ entry زي ما هو من الـ Form)
   const handleSave = async (entry: any) => {
     if (user) {
-      // لو فيه selectedItem، بنضيف الـ cloud_id عشان الـ Firebase يعرف إنه تعديل
-      const dataToSave = selectedItem 
-        ? { ...entry, cloud_id: selectedItem.cloud_id } 
-        : entry;
+      // هنا بنسحب البيانات من الخانات بعد ما عدلتها يدوياً
+      const inputs = formRef.current?.querySelectorAll('input');
+      const finalData = {
+        ...entry,
+        name: inputs?.[0]?.value || entry.name,
+        phone: inputs?.[1]?.value || entry.phone,
+        ip: inputs?.[2]?.value || entry.ip,
+        type: inputs?.[3]?.value || entry.type,
+        username: inputs?.[4]?.value || entry.username,
+        password: inputs?.[5]?.value || entry.password,
+        cloud_id: selectedItem ? selectedItem.cloud_id : null // الـ ID هو اللي بيخلي التعديل يشتغل!
+      };
 
-      await saveDeviceToUser(user.uid, dataToSave);
+      await saveDeviceToUser(user.uid, finalData);
       setSelectedItem(null);
       loadDevices(user.uid);
     }
@@ -55,20 +82,14 @@ export default function NetworkApp() {
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* الفورم */}
-        <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          {/* بنبعت البيانات المختارة للـ DeviceForm كـ props */}
-          <DeviceForm 
-            key={selectedItem ? selectedItem.cloud_id : "new"} 
-            onSave={handleSave} 
-            initialData={selectedItem} 
-          />
-          
+        {/* الفورم مع الـ ref */}
+        <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800" ref={formRef}>
+          <DeviceForm key={selectedItem ? selectedItem.cloud_id : "new"} onSave={handleSave} />
           {selectedItem && (
             <div className="mt-6 p-4 border-t border-gray-700 space-y-2">
               <p className="text-yellow-500 font-bold">تعديل: {selectedItem.name}</p>
-              <button onClick={() => setSelectedItem(null)} className="w-full bg-gray-600 p-2 rounded">إلغاء</button>
-              <button onClick={handleDelete} className="w-full bg-red-600 p-2 rounded">مسح</button>
+              <button onClick={() => setSelectedItem(null)} className="w-full bg-gray-600 p-2 rounded">إلغاء التعديل</button>
+              <button onClick={handleDelete} className="w-full bg-red-600 p-2 rounded">مسح الجهاز نهائياً</button>
             </div>
           )}
         </div>
