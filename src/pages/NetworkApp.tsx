@@ -10,7 +10,7 @@ import {
   saveToFirebase,
   deleteFromFirebase,
   updateInFirebase,
-  mergeData, // تم استيراد دالة الدمج الجديدة
+  mergeData,
 } from "@/lib/firebase";
 import { DeviceForm } from "@/components/DeviceForm";
 import { SearchBar } from "@/components/SearchBar";
@@ -18,21 +18,18 @@ import { NetworkTree } from "@/components/NetworkTree";
 
 export default function NetworkApp() {
   const [allData, setAllData] = useState<DeviceEntry[]>([]);
-  const [filteredData, setFilteredData] = useState<DeviceEntry[]>([]);
-  const [searchText, setSearchText] = useState("");
-  const [selectedItem, setSelectedItem] = useState<DeviceEntry | null>(null);
-  const [editingDevice, setEditingDevice] = useState<DeviceEntry | null>(null);
-  const [loading, setLoading] = useState(true);
-  const formRef = useRef<HTMLDivElement>(null);
+  // ... (باقي الـ states كما هي)
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    // 1. تحميل المحلي أولاً وبشكل دائم لضمان ظهور البيانات فوراً
+    const local = loadFromLocal();
+    setAllData(local.map((item, i) => ({ ...item, _id: `l-${i}` })));
+    setLoading(false); // إظهار البيانات فوراً دون انتظار الإنترنت
+
     try {
       const cloud = await loadFromFirebase();
-      const local = loadFromLocal();
-
       if (cloud !== null) {
-        // نستخدم دالة الدمج الجديدة بدلاً من المسح والتحميل
+        // 2. الدمج الذكي فقط إذا نجح الاتصال
         const combined = mergeData(cloud, local);
         const tagged = combined.map((item, i) => ({ 
           ...item, 
@@ -40,37 +37,31 @@ export default function NetworkApp() {
         }));
         
         setAllData(tagged);
-        saveToLocal(tagged); // تحديث النسخة المحلية بالبيانات المدمجة
-      } else {
-        // في حال عدم وجود اتصال بالسحابة، نعتمد على المحلي
-        setAllData(local.map((item, i) => ({ ...item, _id: `l-${i}` })));
+        saveToLocal(tagged); // تحديث المحلي ببيانات السحابة + الجديدة
       }
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("Cloud sync failed, staying offline", error);
     }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ... (بقية الدالة useEffect الخاصة بالبحث و handleSave و handleUpdate كما هي في كودك)
-
-  // تأكد من دالة handleSave تقوم بـ loadData بعد الحفظ للتحديث
   const handleSave = useCallback(async (entry: DeviceEntry) => {
+    // 1. حفظ محلي فوراً
     addToLocal(entry);
+    
+    // 2. تحديث الواجهة فوراً
+    setAllData(prev => [...prev, entry]);
+
+    // 3. محاولة الرفع
     const cloudSaved = await saveToFirebase(entry);
-    await loadData(); // سيقوم الآن بالدمج والحفظ الصحيح
     if (cloudSaved) {
-      toast.success("تم حفظ الجهاز ومزامنته سحابياً بنجاح!");
+      toast.success("تم الحفظ والمزامنة سحابياً!");
+      loadData(); // إعادة تحميل لجلب الـ cloud_id الجديد
     } else {
-      toast.warning("تم الحفظ محلياً فقط — سيتم المزامنة عند توفر الإنترنت.");
+      toast.warning("تم الحفظ محلياً فقط — سيتم المزامنة لاحقاً.");
     }
   }, [loadData]);
 
-  // ... (باقي الدوال handleDelete و handleUpdate و return كما هي)
-
-  return (
-    <div className="min-h-screen bg-[#0b0b0e] text-white" dir="rtl">
-        {/* الكود الخاص بالعرض كما هو في ملفك الأصلي */}
-    </div>
-  );
+  // ... (باقي الدوال كما هي)
 }
