@@ -10,7 +10,6 @@ export interface DeviceEntry {
   device?: string;
 }
 
-// جلب البيانات من السحابة
 export async function loadFromFirebase(): Promise<DeviceEntry[]> {
   try {
     const res = await fetch(`${FIREBASE_URL}/network_data.json`);
@@ -19,7 +18,6 @@ export async function loadFromFirebase(): Promise<DeviceEntry[]> {
   } catch { return []; }
 }
 
-// حفظ جديد للسحابة
 export async function saveToFirebase(entry: DeviceEntry): Promise<string | null> {
   try {
     const { cloud_id, ...dataToSave } = entry;
@@ -33,7 +31,6 @@ export async function saveToFirebase(entry: DeviceEntry): Promise<string | null>
   } catch { return null; }
 }
 
-// التعامل مع التخزين المحلي
 export function loadFromLocal(): DeviceEntry[] {
   try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch { return []; }
 }
@@ -42,13 +39,25 @@ export function saveToLocal(data: DeviceEntry[]): void {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); 
 }
 
-// دمج البيانات (المنطق السحري)
-export function mergeData(cloud: DeviceEntry[], local: DeviceEntry[]): DeviceEntry[] {
-  const merged = [...cloud];
-  local.forEach(l => {
-    if (!l.cloud_id && !merged.find(c => c.ip === l.ip)) {
-      merged.push(l);
+// دالة المزامنة الذكية التي كنت تطلبها
+export async function syncData(): Promise<DeviceEntry[]> {
+  const local = loadFromLocal();
+  const cloud = await loadFromFirebase();
+
+  // 1. رفع أي جهاز محلي ليس له cloud_id للسحابة
+  for (const item of local) {
+    if (!item.cloud_id) {
+      const newId = await saveToFirebase(item);
+      if (newId) item.cloud_id = newId;
     }
+  }
+
+  // 2. دمج السحابة مع المحلي (لضمان أن كل شيء متطابق)
+  const combined = [...cloud];
+  local.forEach(l => {
+    if (!combined.find(c => c.ip === l.ip)) combined.push(l);
   });
-  return merged;
+
+  saveToLocal(combined);
+  return combined;
 }
