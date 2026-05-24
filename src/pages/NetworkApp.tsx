@@ -3,24 +3,37 @@ import { auth, getUserDevices, saveDeviceToUser } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Auth from "./Auth";
 
-// التعديلات الجديدة هنا:
+// تأكد إنك مستخدم الأقواس {} لأن المكونات عندك تصديرها من النوع Named Export
 import { DeviceForm } from "../components/DeviceForm";
 import { NetworkTree } from "../components/NetworkTree";
 
 export default function NetworkApp() {
   const [user, setUser] = useState<any>(null);
-  const [devices, setDevices] = useState([]);
+  const [devices, setDevices] = useState<any[]>([]); // حماية: بدأنا بمصفوفة فاضية دائماً
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) loadDevices(currentUser.uid);
+      if (currentUser) {
+        loadDevices(currentUser.uid);
+      } else {
+        setLoading(false);
+      }
     });
   }, []);
 
   const loadDevices = async (uid: string) => {
-    const data = await getUserDevices(uid);
-    setDevices(data);
+    try {
+      const data = await getUserDevices(uid);
+      // حماية: نتأكد إن الـ data اللي جاية مصفوفة، لو مش مصفوفة (مثلاً null) خليها مصفوفة فاضية
+      setDevices(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error loading devices:", e);
+      setDevices([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async (entry: any) => {
@@ -30,45 +43,35 @@ export default function NetworkApp() {
     }
   };
 
-  // 🔒 إذا لم يكن هناك تسجيل دخول، اعرض صفحة الدخول (تختفي تلقائياً عند الدخول)
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#0b0b0e] text-white">جاري التحميل...</div>;
+  }
+
   if (!user) return <Auth onLoginSuccess={() => {}} />;
 
-  // 🌟 الواجهة الرئيسية للبرنامج بعد تسجيل الدخول
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
-      
-      {/* شريط التحكم العلوي */}
       <div className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-blue-500">Akram-Network Dashboard</h1>
-          <p className="text-sm text-gray-400 mt-1">إدارة ومراقبة أجهزة الشبكة</p>
+          <h1 className="text-2xl font-bold text-blue-500">Akram-Network</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
-          <button 
-            onClick={() => auth.signOut()} 
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition-colors text-sm font-bold"
-          >
-            تسجيل الخروج
-          </button>
-        </div>
+        <button 
+          onClick={() => auth.signOut()} 
+          className="bg-red-600 px-4 py-2 rounded text-sm font-bold"
+        >
+          خروج
+        </button>
       </div>
 
-      {/* محتوى الشبكة: الفورم والشجرة */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* قسم إضافة وتعديل الأجهزة */}
         <div className="lg:col-span-1 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          <h2 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2 text-gray-200">التحكم في الأجهزة</h2>
           <DeviceForm onSave={handleSave} />
         </div>
 
-        {/* قسم عرض شجرة الشبكة */}
-        <div className="lg:col-span-2 bg-gray-900/50 p-4 rounded-xl border border-gray-800 min-h-[500px]">
-          <h2 className="text-lg font-bold mb-4 border-b border-gray-700 pb-2 text-gray-200">هيكلة الشبكة (Network Tree)</h2>
+        <div className="lg:col-span-2 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+          {/* هنا بنبعت الـ devices المتأكدين إنها مصفوفة */}
           <NetworkTree devices={devices} />
         </div>
-        
       </div>
     </div>
   );
