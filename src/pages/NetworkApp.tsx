@@ -24,20 +24,20 @@ export default function NetworkApp() {
 
   const handleSave = async (entry: any) => {
     if (user) {
-      // هنا الخدعة: لو إحنا مختارين جهاز للتعديل، بنضيف الـ cloud_id للبيانات
-      const finalEntry = selectedItem 
+      // دمج الـ cloud_id في البيانات ليتم التحديث في Firebase
+      const dataToSave = selectedItem 
         ? { ...entry, cloud_id: selectedItem.cloud_id } 
         : entry;
         
-      await saveDeviceToUser(user.uid, finalEntry);
-      setSelectedItem(null);
+      await saveDeviceToUser(user.uid, dataToSave);
+      setSelectedItem(null); // إعادة تعيين التحديد بعد الحفظ
       loadDevices(user.uid);
     }
   };
 
   const handleDelete = async () => {
     if (user && selectedItem && confirm("هل أنت متأكد من مسح الجهاز؟")) {
-      await deleteDeviceFromUser(user.uid, selectedItem.cloud_id);
+      await deleteDeviceFromUser(user.uid, selectedItem.cloud_id); // مسح باستخدام الـ ID
       setSelectedItem(null);
       loadDevices(user.uid);
     }
@@ -49,21 +49,28 @@ export default function NetworkApp() {
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          <DeviceForm onSave={handleSave} />
+          {/* 
+            استخدام الـ key و الـ props يجبر الفورم على تحديث نفسه عند اختيار جهاز 
+            دون الحاجة لتعديل كود الـ DeviceForm
+          */}
+          <DeviceForm 
+            key={selectedItem ? selectedItem.cloud_id : "new"} 
+            onSave={handleSave} 
+            {...(selectedItem || {})} 
+          />
           
-          {/* أزرار التحكم في التعديل تظهر فقط عند اختيار جهاز */}
           {selectedItem && (
             <div className="mt-6 p-4 border-t border-gray-700 space-y-2">
-              <p className="text-yellow-500 font-bold mb-2">تعديل: {selectedItem.name}</p>
+              <p className="text-yellow-500 font-bold mb-2">جاري التعديل على: {selectedItem.name}</p>
               <button 
                 onClick={() => setSelectedItem(null)} 
-                className="w-full bg-gray-600 p-2 rounded hover:bg-gray-500"
+                className="w-full bg-gray-600 p-2 rounded hover:bg-gray-500 transition-all"
               >
                 إلغاء التعديل
               </button>
               <button 
                 onClick={handleDelete} 
-                className="w-full bg-red-600 p-2 rounded hover:bg-red-700"
+                className="w-full bg-red-600 p-2 rounded hover:bg-red-700 transition-all"
               >
                 مسح الجهاز نهائياً
               </button>
