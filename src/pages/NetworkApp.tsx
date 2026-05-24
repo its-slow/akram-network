@@ -3,9 +3,9 @@ import { auth, getUserDevices, saveDeviceToUser } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Auth from "./Auth";
 
-// ✅ استدعاء مكونات البرنامج الأساسية الخاصة بك
+// التعديلات الجديدة هنا:
 import { DeviceForm } from "../components/DeviceForm";
-import NetworkTree from "../components/NetworkTree";
+import { NetworkTree } from "../components/NetworkTree";
 
 export default function NetworkApp() {
   const [user, setUser] = useState<any>(null);
