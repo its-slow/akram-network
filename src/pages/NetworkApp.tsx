@@ -3,14 +3,17 @@ import { auth, getUserDevices, saveDeviceToUser } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Auth from "./Auth";
 
-// تأكد إنك مستخدم الأقواس {} لأن المكونات عندك تصديرها من النوع Named Export
+// تأكد من استدعاء المكونات صح
 import { DeviceForm } from "../components/DeviceForm";
 import { NetworkTree } from "../components/NetworkTree";
 
 export default function NetworkApp() {
   const [user, setUser] = useState<any>(null);
-  const [devices, setDevices] = useState<any[]>([]); // حماية: بدأنا بمصفوفة فاضية دائماً
+  const [devices, setDevices] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
+  
+  // ✅ أضفت State عشان يتوافق مع البروبس اللي في صورة image_13b126.png
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (currentUser) => {
@@ -26,10 +29,8 @@ export default function NetworkApp() {
   const loadDevices = async (uid: string) => {
     try {
       const data = await getUserDevices(uid);
-      // حماية: نتأكد إن الـ data اللي جاية مصفوفة، لو مش مصفوفة (مثلاً null) خليها مصفوفة فاضية
       setDevices(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error("Error loading devices:", e);
       setDevices([]);
     } finally {
       setLoading(false);
@@ -43,34 +44,30 @@ export default function NetworkApp() {
     }
   };
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-[#0b0b0e] text-white">جاري التحميل...</div>;
-  }
-
+  if (loading) return <div className="p-10 text-white">جاري التحميل...</div>;
   if (!user) return <Auth onLoginSuccess={() => {}} />;
 
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
-      <div className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-blue-500">Akram-Network</h1>
-        </div>
-        <button 
-          onClick={() => auth.signOut()} 
-          className="bg-red-600 px-4 py-2 rounded text-sm font-bold"
-        >
-          خروج
-        </button>
+      <div className="flex justify-between mb-8 border-b border-gray-800 pb-4">
+        <h1 className="text-xl font-bold text-blue-500">Akram-Network</h1>
+        <button onClick={() => auth.signOut()} className="bg-red-600 px-3 py-1 rounded text-sm">خروج</button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+        <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
           <DeviceForm onSave={handleSave} />
         </div>
 
         <div className="lg:col-span-2 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          {/* هنا بنبعت الـ devices المتأكدين إنها مصفوفة */}
-          <NetworkTree devices={devices} />
+          {/* ✅ التعديل الجوهري: مطابقة البروبس مع image_13b126.png */}
+          <NetworkTree 
+            data={devices}
+            selectedItem={selectedItem}
+            onSelect={(item) => setSelectedItem(item)}
+            onEdit={(item) => console.log("تعديل:", item)}
+            isFiltered={false}
+          />
         </div>
       </div>
     </div>
