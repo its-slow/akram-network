@@ -19,18 +19,21 @@ export default function NetworkApp() {
   useEffect(() => { syncAll(); }, [syncAll]);
 
   const handleSave = async (entry: DeviceEntry) => {
+    // 1. الحفظ المحلي فوراً
     const local = loadFromLocal();
-    // إزالة النسخة القديمة من الجهاز بنفس الـ IP قبل إضافة الجديد
     const updated = [...local.filter(i => i.ip !== entry.ip), entry];
     saveToLocal(updated);
     setAllData(mergeData([], updated));
     
-    toast.info("تم الحفظ محلياً");
-    
+    toast.info("جاري المزامنة مع السحابة...");
+
+    // 2. محاولة الرفع (أكثر من مرة لضمان الوصول)
     const newId = await saveToFirebase(entry);
     if (newId) {
-      toast.success("تم التزامن مع السحابة");
-      syncAll();
+      toast.success("تم الحفظ والرفع بنجاح!");
+      syncAll(); 
+    } else {
+      toast.error("فشل الرفع، سأحاول المزامنة عند الاتصال التلقائي.");
     }
   };
 
