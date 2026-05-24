@@ -4,7 +4,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import Auth from "./Auth";
 
 // ✅ استدعاء مكونات البرنامج الأساسية الخاصة بك
-import DeviceForm from "../components/DeviceForm";
+import { DeviceForm } from "../components/DeviceForm";
 import NetworkTree from "../components/NetworkTree";
 
 export default function NetworkApp() {
