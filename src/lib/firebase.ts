@@ -40,15 +40,10 @@ export function saveToLocal(data: DeviceEntry[]): void {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); 
 }
 
-// دالة دمج صارمة: تمنع تكرار الـ IP تماماً
+// دالة دمج تمنع التكرار نهائياً بناءً على الـ IP
 export function mergeData(cloud: DeviceEntry[], local: DeviceEntry[]): DeviceEntry[] {
   const map = new Map<string, DeviceEntry>();
-  
-  // أولاً نضيف بيانات السحابة (الأصل)
   cloud.forEach(item => map.set(item.ip, item));
-  
-  // ثم نضيف المحلية (لو الـ IP موجود، السطر ده هيحدّثه)
   local.forEach(item => map.set(item.ip, item));
-  
   return Array.from(map.values());
 }
