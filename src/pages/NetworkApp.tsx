@@ -9,6 +9,7 @@ export default function NetworkApp() {
   const [user, setUser] = useState<any>(null);
   const [devices, setDevices] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState(""); // متغير البحث
   const formContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function NetworkApp() {
     });
   }, []);
 
-  // كود ملء البيانات أوتوماتيك داخل الخانات عند اختيار عميل
+  // ملء بيانات التعديل
   useEffect(() => {
     if (selectedItem && formContainerRef.current) {
       setTimeout(() => {
@@ -40,9 +41,14 @@ export default function NetworkApp() {
     setDevices(data);
   };
 
+  // فلترة الأجهزة بناءً على البحث
+  const filteredDevices = devices.filter(d => 
+    d.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    d.ip?.includes(searchTerm)
+  );
+
   const handleSave = async (entry: any) => {
     if (user) {
-      // سحب القيم الجديدة من الخانات عند الحفظ
       const inputs = formContainerRef.current?.querySelectorAll('input');
       const updatedEntry = {
         ...entry,
@@ -62,7 +68,7 @@ export default function NetworkApp() {
   };
 
   const handleDelete = async () => {
-    if (user && selectedItem && confirm("هل أنت متأكد من مسح الجهاز؟")) {
+    if (user && selectedItem && confirm("هل أنت متأكد؟")) {
       await deleteDeviceFromUser(user.uid, selectedItem.cloud_id);
       setSelectedItem(null);
       loadDevices(user.uid);
@@ -76,25 +82,27 @@ export default function NetworkApp() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* الفورم */}
         <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800" ref={formContainerRef}>
-          <DeviceForm 
-            key={selectedItem ? selectedItem.cloud_id : "new"} 
-            onSave={handleSave} 
-          />
-          
+          <DeviceForm key={selectedItem ? selectedItem.cloud_id : "new"} onSave={handleSave} />
           {selectedItem && (
             <div className="mt-6 p-4 border-t border-gray-700 space-y-2">
-              <p className="text-yellow-500 font-bold mb-2">تعديل بيانات: {selectedItem.name}</p>
-              <button onClick={() => setSelectedItem(null)} className="w-full bg-gray-600 p-2 rounded">إلغاء التعديل</button>
-              <button onClick={handleDelete} className="w-full bg-red-600 p-2 rounded">مسح الجهاز نهائياً</button>
+              <p className="text-yellow-500 font-bold">تعديل: {selectedItem.name}</p>
+              <button onClick={() => setSelectedItem(null)} className="w-full bg-gray-600 p-2 rounded">إلغاء</button>
+              <button onClick={handleDelete} className="w-full bg-red-600 p-2 rounded">مسح</button>
             </div>
           )}
         </div>
 
-        {/* الشجرة والبحث */}
+        {/* البحث والشجرة */}
         <div className="lg:col-span-2 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
           <h2 className="text-blue-400 font-bold mb-4">قائمة المشتركين</h2>
+          <input 
+            type="text" 
+            placeholder="ابحث بالاسم أو الـ IP..." 
+            className="w-full p-2 mb-4 bg-gray-800 rounded border border-gray-700 text-white"
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
           <NetworkTree 
-            data={devices} 
+            data={filteredDevices} 
             onSelect={(item) => setSelectedItem(item)} 
           />
         </div>
