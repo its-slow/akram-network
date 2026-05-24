@@ -1,74 +1,57 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { 
-  DeviceEntry, 
-  loadFromFirebase, 
-  loadFromLocal, 
-  saveToLocal, 
-  addToLocal, 
-  saveToFirebase, 
-  mergeData 
-} from "@/lib/firebase";
-
-// استيراد المكونات التي كانت في تطبيقك
+import { DeviceEntry, loadFromFirebase, loadFromLocal, saveToLocal, saveToFirebase, updateInFirebase, deleteFromFirebase } from "@/lib/firebase";
 import { DeviceForm } from "@/components/DeviceForm";
 import { SearchBar } from "@/components/SearchBar";
 import { NetworkTree } from "@/components/NetworkTree";
 
 export default function NetworkApp() {
   const [allData, setAllData] = useState<DeviceEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [editingDevice, setEditingDevice] = useState<DeviceEntry | null>(null);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     const local = loadFromLocal();
-    // عرض المحلي فوراً لتجنب الشاشة السوداء
-    setAllData(local.map((item, i) => ({ ...item, _id: `l-${i}` })));
-
-    try {
-      const cloud = await loadFromFirebase();
-      if (cloud) {
-        const combined = mergeData(cloud, local);
-        const tagged = combined.map((item, i) => ({ 
-          ...item, 
-          _id: item.cloud_id ? `c-${i}-${item.cloud_id}` : `l-${i}` 
-        }));
-        setAllData(tagged);
-        saveToLocal(tagged);
-      }
-    } catch (e) {
-      console.error("فشل الاتصال بالسحابة، نعمل محلياً");
-    } finally {
-      setLoading(false);
+    setAllData(local);
+    const cloud = await loadFromFirebase();
+    if (cloud) {
+      setAllData(cloud);
+      saveToLocal(cloud);
     }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleSave = useCallback(async (entry: DeviceEntry) => {
-    addToLocal(entry);
-    setAllData(prev => [...prev, entry]);
-    
-    const success = await saveToFirebase(entry);
-    if (success) {
-      toast.success("تم الحفظ والمزامنة بنجاح");
-      loadData();
+  const handleSave = async (entry: DeviceEntry) => {
+    if (editingDevice && editingDevice.cloud_id) {
+      const success = await updateInFirebase(editingDevice.cloud_id, entry);
+      if (success) toast.success("تم التعديل");
     } else {
-      toast.warning("تم الحفظ محلياً فقط");
+      const newId = await saveToFirebase(entry);
+      if (newId) toast.success("تم الحفظ");
     }
-  }, [loadData]);
+    setEditingDevice(null);
+    loadData();
+  };
+
+  const handleDelete = async (device: DeviceEntry) => {
+    if (device.cloud_id) {
+      const success = await deleteFromFirebase(device.cloud_id);
+      if (success) {
+        toast.error("تم الحذف");
+        loadData();
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white" dir="rtl">
-      <div className="p-4 space-y-6">
-        <SearchBar onSearch={(text) => console.log(text)} />
-        <DeviceForm onSave={handleSave} />
-        {loading ? (
-          <div className="text-center p-4">جاري التحميل...</div>
-        ) : (
-          <NetworkTree data={allData} />
-        )}
-      </div>
+      <SearchBar onSearch={(t) => console.log(t)} />
+      <DeviceForm onSave={handleSave} initialData={editingDevice || undefined} />
+      <NetworkTree 
+        data={allData} 
+        onEdit={(d) => setEditingDevice(d)} 
+        onDelete={handleDelete} 
+      />
     </div>
   );
 }
