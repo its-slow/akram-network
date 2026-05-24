@@ -1,63 +1,36 @@
-const FIREBASE_URL = "https://akram-network-default-rtdb.firebaseio.com";
-const LOCAL_KEY = "akram_network_data";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getDatabase, ref, get, push, set } from "firebase/database";
 
-export interface DeviceEntry {
-  cloud_id?: string;
-  ip: string;
-  name?: string;
-  position: "تحت" | "فوق";
-  region: string;
-  device?: string;
-  phone?: string;
+const firebaseConfig = {
+  // حط هنا بيانات مشروعك من Firebase Console -> Project Settings
+  apiKey: "AIzaSy...",
+  authDomain: "...",
+  databaseURL: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "..."
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getDatabase(app);
+
+// دالة حفظ بيانات العميل في "خزنته" الخاصة
+export async function saveDeviceToUser(uid: string, entry: any) {
+  const userRef = ref(db, `users/${uid}/devices`);
+  const newEntryRef = push(userRef);
+  await set(newEntryRef, entry);
+  return newEntryRef.key;
 }
 
-export async function loadFromFirebase(): Promise<DeviceEntry[]> {
-  try {
-    const res = await fetch(`${FIREBASE_URL}/network_data.json`);
-    const data = await res.json();
-    return data ? Object.entries(data).map(([k, v]) => ({ ...(v as DeviceEntry), cloud_id: k })) : [];
-  } catch { return []; }
-}
-
-export async function saveToFirebase(entry: DeviceEntry): Promise<string | null> {
-  try {
-    const { cloud_id, ...dataToSave } = entry;
-    const res = await fetch(`${FIREBASE_URL}/network_data.json`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataToSave),
-    });
-    const result = await res.json();
-    return result.name;
-  } catch { return null; }
-}
-
-export function loadFromLocal(): DeviceEntry[] {
-  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch { return []; }
-}
-
-export function saveToLocal(data: DeviceEntry[]): void { 
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); 
-}
-
-// دمج البيانات (يمنع التكرار)
-export function mergeData(cloud: DeviceEntry[], local: DeviceEntry[]): DeviceEntry[] {
-  const map = new Map<string, DeviceEntry>();
-  cloud.forEach(item => map.set(item.ip, item));
-  local.forEach(item => map.set(item.ip, item));
-  return Array.from(map.values());
-}
-
-// المزامنة: ترفع فقط الأجهزة التي ليس لديها cloud_id
-export async function processPendingData(): Promise<void> {
-  const local = loadFromLocal();
-  const pendingItems = local.filter(item => !item.cloud_id);
-  
-  for (const item of pendingItems) {
-    const newId = await saveToFirebase(item);
-    if (newId) {
-      item.cloud_id = newId;
-    }
+// دالة جلب بيانات العميل فقط
+export async function getUserDevices(uid: string) {
+  const userRef = ref(db, `users/${uid}/devices`);
+  const snapshot = await get(userRef);
+  if (snapshot.exists()) {
+    return Object.entries(snapshot.val()).map(([k, v]) => ({ ...(v as any), cloud_id: k }));
   }
-  saveToLocal(local);
+  return [];
 }
