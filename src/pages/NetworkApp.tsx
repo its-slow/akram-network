@@ -24,7 +24,7 @@ export default function NetworkApp() {
 
   const handleSave = async (entry: any) => {
     if (user) {
-      // لو فيه selectedItem معناها ده تعديل، بنبعت الـ cloud_id
+      // ندمج الـ cloud_id في البيانات ليتم التعديل بدلاً من الإضافة
       const dataToSave = selectedItem ? { ...entry, cloud_id: selectedItem.cloud_id } : entry;
       await saveDeviceToUser(user.uid, dataToSave);
       setSelectedItem(null);
@@ -33,8 +33,8 @@ export default function NetworkApp() {
   };
 
   const handleDelete = async () => {
-    if (user && selectedItem && confirm("مسح الجهاز؟")) {
-      await deleteDeviceFromUser(user.uid, selectedItem.cloud_id);
+    if (user && selectedItem && confirm("هل أنت متأكد من مسح الجهاز؟")) {
+      await deleteDeviceFromUser(user.uid, selectedItem.cloud_id); // مسح باستخدام الـ ID
       setSelectedItem(null);
       loadDevices(user.uid);
     }
@@ -46,15 +46,38 @@ export default function NetworkApp() {
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          <DeviceForm onSave={handleSave} />
+          {/* 
+            استخدام الـ key هنا هو "الخدعة" التي ستجبر الفورم على التحديث 
+            بدون تعديل كود الـ DeviceForm نفسه
+          */}
+          <DeviceForm 
+            key={selectedItem ? selectedItem.cloud_id : "new"} 
+            onSave={handleSave} 
+          />
+          
           {selectedItem && (
-            <button onClick={handleDelete} className="w-full bg-red-600 mt-4 p-2 rounded">
-              مسح الجهاز المختار
-            </button>
+            <div className="mt-4 space-y-2">
+              <button 
+                onClick={() => setSelectedItem(null)} 
+                className="w-full bg-gray-600 p-2 rounded"
+              >
+                إلغاء التحديد
+              </button>
+              <button 
+                onClick={handleDelete} 
+                className="w-full bg-red-600 p-2 rounded"
+              >
+                مسح الجهاز المختار
+              </button>
+            </div>
           )}
         </div>
+
         <div className="lg:col-span-2 bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          <NetworkTree data={devices} onSelect={(item) => setSelectedItem(item)} />
+          <NetworkTree 
+            data={devices} 
+            onSelect={(item) => setSelectedItem(item)} 
+          />
         </div>
       </div>
     </div>
