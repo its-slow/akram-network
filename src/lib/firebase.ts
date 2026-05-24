@@ -1,6 +1,28 @@
 const FIREBASE_URL = "https://akram-network-default-rtdb.firebaseio.com";
+const LOCAL_KEY = "akram_network_data";
 
-// ... (نفس تعريف واجهة DeviceEntry)
+export interface DeviceEntry {
+  _id?: string;
+  cloud_id?: string;
+  position: "تحت" | "فوق";
+  region: string;
+  name?: string;
+  phone?: string;
+  ip: string;
+  device?: string;
+  service?: string;
+  conn_type?: string;
+  pppoe_user?: string;
+  pppoe_pass?: string;
+  switch_name?: string;
+  mode?: string;
+  link_type?: string;
+  connected_to?: string;
+  wifi_name?: string;
+  wifi_pass?: string;
+  above_pppoe_user?: string;
+  above_pppoe_pass?: string;
+}
 
 export async function loadFromFirebase(): Promise<DeviceEntry[] | null> {
   try {
@@ -17,11 +39,9 @@ export async function loadFromFirebase(): Promise<DeviceEntry[] | null> {
   }
 }
 
-// دالة دمج البيانات: تحافظ على البيانات المحلية الجديدة وتضيفها للسحابة
 export function mergeData(cloudData: DeviceEntry[], localData: DeviceEntry[]): DeviceEntry[] {
   const merged = [...cloudData];
   localData.forEach(localItem => {
-    // نتحقق إذا لم يكن العنصر موجوداً في السحابة
     const exists = merged.find(c => c.ip === localItem.ip && c.name === localItem.name);
     if (!exists) {
       merged.push(localItem);
@@ -30,23 +50,8 @@ export function mergeData(cloudData: DeviceEntry[], localData: DeviceEntry[]): D
   return merged;
 }
 
-// دالة مزامنة البيانات الأوفلاين: ترفع أي عنصر لا يملك cloud_id
-export async function syncOfflineData(): Promise<void> {
-  const localData = loadFromLocal();
-  const unsynced = localData.filter(item => !item.cloud_id);
-  
-  for (const item of unsynced) {
-    const success = await saveToFirebase(item);
-    if (success) {
-      // بعد الرفع الناجح، يمكننا مسح القديم وإعادة تحميل البيانات الصحيحة
-      // في التطبيق الفعلي، ستستدعي loadData بعد هذه الدالة
-    }
-  }
-}
-
 export async function saveToFirebase(entry: DeviceEntry): Promise<boolean> {
   try {
-    // إزالة _id قبل الرفع للسحابة لتجنب الأخطاء
     const { _id, ...dataToSave } = entry;
     const res = await fetch(`${FIREBASE_URL}/network_data.json`, {
       method: "POST",
@@ -58,8 +63,6 @@ export async function saveToFirebase(entry: DeviceEntry): Promise<boolean> {
     return false;
   }
 }
-
-// ... (احتفظ بدوال updateInFirebase و deleteFromFirebase و Local Storage كما هي)
 
 export function loadFromLocal(): DeviceEntry[] {
   try {
@@ -80,10 +83,4 @@ export function addToLocal(entry: DeviceEntry): void {
   saveToLocal(data);
 }
 
-export function deleteFromLocal(ip: string, name?: string): void {
-  const data = loadFromLocal();
-  const filtered = data.filter(
-    (item) => !(item.ip === ip && item.name === name)
-  );
-  saveToLocal(filtered);
-}
+// أضف الدوال الأخرى (updateInFirebase, deleteFromFirebase, deleteFromLocal) كما كانت لديك.
