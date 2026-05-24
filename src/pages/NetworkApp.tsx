@@ -1,49 +1,44 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { DeviceEntry, loadFromLocal, syncData } from "@/lib/firebase";
+import { DeviceEntry, loadFromLocal, saveToLocal, mergeData, loadFromFirebase, saveToFirebase } from "@/lib/firebase";
 import { DeviceForm } from "@/components/DeviceForm";
-import { SearchBar } from "@/components/SearchBar";
 import { NetworkTree } from "@/components/NetworkTree";
+import { SearchBar } from "@/components/SearchBar";
 
 export default function NetworkApp() {
   const [allData, setAllData] = useState<DeviceEntry[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const startSync = useCallback(async () => {
-    setLoading(true);
-    try {
-      // هذه الدالة الآن تقوم بالرفع والتطابق تلقائياً
-      const syncedData = await syncData();
-      setAllData(syncedData);
-    } catch (e) {
-      // في حال فشل الاتصال، نظهر البيانات المحلية كما هي
-      setAllData(loadFromLocal());
-    } finally {
-      setLoading(false);
-    }
+  const syncAll = useCallback(async () => {
+    const local = loadFromLocal();
+    const cloud = await loadFromFirebase();
+    const combined = mergeData(cloud, local);
+    setAllData(combined);
+    saveToLocal(combined);
   }, []);
 
-  useEffect(() => {
-    // تشغيل المزامنة عند فتح الموقع أو استعادة الاتصال
-    startSync();
-    window.addEventListener('online', startSync);
-    return () => window.removeEventListener('online', startSync);
-  }, [startSync]);
+  useEffect(() => { syncAll(); }, [syncAll]);
 
   const handleSave = async (entry: DeviceEntry) => {
     const local = loadFromLocal();
-    const updated = [...local, entry];
+    // إزالة النسخة القديمة من الجهاز بنفس الـ IP قبل إضافة الجديد
+    const updated = [...local.filter(i => i.ip !== entry.ip), entry];
     saveToLocal(updated);
-    setAllData(updated);
-    toast.success("تم الحفظ محلياً، سيتم المزامنة عند الاتصال");
-    startSync(); // محاولة مزامنة فورية
+    setAllData(mergeData([], updated));
+    
+    toast.info("تم الحفظ محلياً");
+    
+    const newId = await saveToFirebase(entry);
+    if (newId) {
+      toast.success("تم التزامن مع السحابة");
+      syncAll();
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0b0e] text-white" dir="rtl">
-      <SearchBar onSearch={(t) => console.log(t)} />
+    <div className="bg-[#0b0b0e] text-white min-h-screen" dir="rtl">
+      <SearchBar onSearch={() => {}} />
       <DeviceForm onSave={handleSave} />
-      {loading ? <div className="p-4 text-center">جاري المزامنة...</div> : <NetworkTree data={allData} />}
+      <NetworkTree data={allData} />
     </div>
   );
 }
