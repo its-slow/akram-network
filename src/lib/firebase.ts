@@ -26,17 +26,11 @@ export async function loadFromFirebase(): Promise<DeviceEntry[] | null> {
     const res = await fetch(`${FIREBASE_URL}/network_data.json`);
     if (!res.ok) return null;
     const data = await res.json();
-    if (!data) return [];
-    return Object.entries(data).map(([k, v]) => ({
-      ...(v as DeviceEntry),
-      cloud_id: k,
-    }));
-  } catch {
-    return null;
-  }
+    return data ? Object.entries(data).map(([k, v]) => ({ ...(v as DeviceEntry), cloud_id: k })) : [];
+  } catch { return null; }
 }
 
-export async function saveToFirebase(entry: DeviceEntry): Promise<boolean> {
+export async function saveToFirebase(entry: DeviceEntry): Promise<string | null> {
   try {
     const { _id, cloud_id, ...dataToSave } = entry;
     const res = await fetch(`${FIREBASE_URL}/network_data.json`, {
@@ -44,36 +38,31 @@ export async function saveToFirebase(entry: DeviceEntry): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dataToSave),
     });
+    const result = await res.json();
+    return result.name; // هذا هو الـ cloud_id الجديد
+  } catch { return null; }
+}
+
+export async function updateInFirebase(cloud_id: string, entry: DeviceEntry): Promise<boolean> {
+  try {
+    const { _id, cloud_id: _, ...dataToUpdate } = entry;
+    const res = await fetch(`${FIREBASE_URL}/network_data/${cloud_id}.json`, {
+      method: "PUT",
+      body: JSON.stringify(dataToUpdate),
+    });
     return res.ok;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
+}
+
+export async function deleteFromFirebase(cloud_id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${FIREBASE_URL}/network_data/${cloud_id}.json`, { method: "DELETE" });
+    return res.ok;
+  } catch { return false; }
 }
 
 export function loadFromLocal(): DeviceEntry[] {
-  try {
-    const raw = localStorage.getItem(LOCAL_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch { return []; }
 }
 
-export function saveToLocal(data: DeviceEntry[]): void {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
-}
-
-export function addToLocal(entry: DeviceEntry): void {
-  const data = loadFromLocal();
-  data.push(entry);
-  saveToLocal(data);
-}
-
-export function mergeData(cloudData: DeviceEntry[], localData: DeviceEntry[]): DeviceEntry[] {
-  const merged = [...cloudData];
-  localData.forEach(localItem => {
-    const exists = merged.find(c => c.ip === localItem.ip && c.name === localItem.name);
-    if (!exists) merged.push(localItem);
-  });
-  return merged;
-}
+export function saveToLocal(data: DeviceEntry[]): void { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); }
