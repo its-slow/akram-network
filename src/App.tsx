@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { auth } from "./firebase"; // تأكد من مسار ملف الفايربيز عندك
+import { auth, db } from "./lib/firebase // تأكد من مسار ملف الفايربيز عندك
 import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function Login() {
