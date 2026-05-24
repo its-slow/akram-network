@@ -40,10 +40,24 @@ export function saveToLocal(data: DeviceEntry[]): void {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); 
 }
 
-// دالة دمج تمنع التكرار نهائياً بناءً على الـ IP
+// دمج البيانات (يمنع التكرار)
 export function mergeData(cloud: DeviceEntry[], local: DeviceEntry[]): DeviceEntry[] {
   const map = new Map<string, DeviceEntry>();
   cloud.forEach(item => map.set(item.ip, item));
   local.forEach(item => map.set(item.ip, item));
   return Array.from(map.values());
+}
+
+// المزامنة: ترفع فقط الأجهزة التي ليس لديها cloud_id
+export async function processPendingData(): Promise<void> {
+  const local = loadFromLocal();
+  const pendingItems = local.filter(item => !item.cloud_id);
+  
+  for (const item of pendingItems) {
+    const newId = await saveToFirebase(item);
+    if (newId) {
+      item.cloud_id = newId;
+    }
+  }
+  saveToLocal(local);
 }
