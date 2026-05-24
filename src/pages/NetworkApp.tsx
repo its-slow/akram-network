@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { DeviceEntry, loadFromLocal, saveToLocal, mergeData, loadFromFirebase, saveToFirebase } from "@/lib/firebase";
+import { DeviceEntry, loadFromLocal, saveToLocal, mergeData, loadFromFirebase, processPendingData } from "@/lib/firebase";
 import { DeviceForm } from "@/components/DeviceForm";
 import { NetworkTree } from "@/components/NetworkTree";
 import { SearchBar } from "@/components/SearchBar";
@@ -8,7 +8,10 @@ import { SearchBar } from "@/components/SearchBar";
 export default function NetworkApp() {
   const [allData, setAllData] = useState<DeviceEntry[]>([]);
 
-  const syncAll = useCallback(async () => {
+  const fullSync = useCallback(async () => {
+    // 1. رفع أي بيانات معلقة
+    await processPendingData();
+    // 2. تحديث القائمة من المصدرين
     const local = loadFromLocal();
     const cloud = await loadFromFirebase();
     const combined = mergeData(cloud, local);
@@ -16,25 +19,24 @@ export default function NetworkApp() {
     saveToLocal(combined);
   }, []);
 
-  useEffect(() => { syncAll(); }, [syncAll]);
+  useEffect(() => {
+    fullSync();
+    // المزامنة التلقائية عند عودة الإنترنت
+    window.addEventListener('online', fullSync);
+    return () => window.removeEventListener('online', fullSync);
+  }, [fullSync]);
 
   const handleSave = async (entry: DeviceEntry) => {
-    // 1. الحفظ المحلي فوراً
     const local = loadFromLocal();
+    // الحفظ المحلي وتحديث الواجهة فوراً
     const updated = [...local.filter(i => i.ip !== entry.ip), entry];
     saveToLocal(updated);
     setAllData(mergeData([], updated));
     
-    toast.info("جاري المزامنة مع السحابة...");
-
-    // 2. محاولة الرفع (أكثر من مرة لضمان الوصول)
-    const newId = await saveToFirebase(entry);
-    if (newId) {
-      toast.success("تم الحفظ والرفع بنجاح!");
-      syncAll(); 
-    } else {
-      toast.error("فشل الرفع، سأحاول المزامنة عند الاتصال التلقائي.");
-    }
+    toast.info("تم الحفظ في جهازك...");
+    // محاولة مزامنة فورية
+    await processPendingData();
+    fullSync();
   };
 
   return (
