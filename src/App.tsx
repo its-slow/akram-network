@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { auth } from "./lib/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 
-// ⚠️ اسحب هنا أي مكونات أو مكون البرنامج القديم بتاعك لو كان مفصول في ملفات تانية
-// import MainDashboard from "./components/MainDashboard"; 
+// ✅ التعديل الأول: استدعاء واجهة البرنامج الأصلية بتاعتك
+import NetworkApp from "./pages/NetworkApp";
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -14,12 +14,11 @@ export default function App() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // مراقبة حالة المستخدم بدون الحاجة لعمل reload للمتصفح
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
-    return () => unsubscribe(); // تنظيف الـ listener عند إغلاق المكون
+    return () => unsubscribe();
   }, []);
 
   const handleAction = async (e: React.FormEvent) => {
@@ -27,7 +26,6 @@ export default function App() {
     setError("");
     try {
       if (isLogin) {
-        // تسجيل الدخول - الـ Firebase هيدخل اليوزر تلقائياً والصفحة هتتحول بدون ريفريش
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
@@ -47,39 +45,28 @@ export default function App() {
     );
   }
 
-  // --- 🌟 هنا السيستم والبرنامج القديم بتاعك بيرجع يشتغل 🌟 ---
+  // --- 🌟 التعديل التاني: بمجرد الدخول، هيفتح برنامجك فوراً 🌟 ---
   if (user) {
     return (
       <>
-        {/* شريط علوي بسيط عشان تقدر تعمل خروج من الحساب في أي وقت */}
-        <div className="bg-gray-900 p-4 flex justify-between items-center border-b border-gray-800 text-white">
-          <span className="text-sm text-gray-400">حساب: {user.email}</span>
+        {/* شريط علوي صغير جداً لزرار الخروج عشان ما يبوظش شكل برنامجك */}
+        <div className="bg-gray-900 p-2 flex justify-between items-center border-b border-gray-800 text-white">
+          <span className="text-xs text-gray-400">حساب الإدارة: {user.email}</span>
           <button 
             onClick={() => signOut(auth)} 
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs transition-colors"
           >
-            خروج من الحساب
+            تسجيل خروج
           </button>
         </div>
 
-        {/* ⬇️ حط كود واجهة شبكة أكرم القديمة بالكامل هنا ⬇️ */}
-        <div className="p-6">
-          
-          {/* 
-              🚨 امسح السطور اللي تحت دي وحط كود الـ HTML/TSX بتاع برنامجك الأصلي 
-              (اللوحة، أزرار التحكم، السيرفرات، المشتركين، إلخ...)
-          */}
-          <h1 className="text-3xl text-white font-bold">لوحة تحكم Akram-Network</h1>
-          <p className="text-blue-400 mt-2">تم استعادة النظام وتأمين الدخول بنجاح.</p>
-          
-          {/* لو عندك الـ Dashboard القديم في مكون خارجي استدعيه كدة: <MainDashboard /> */}
-
-        </div>
+        {/* ✅ هنا بيتم عرض واجهة الشبكة الخاصة بيك بالكامل بدون ريفريش */}
+        <NetworkApp />
       </>
     );
   }
 
-  // --- 🔒 صفحة تسجيل الدخول (تظهر فقط لو مش مسجل) ---
+  // --- 🔒 صفحة تسجيل الدخول ---
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
       <form onSubmit={handleAction} className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-gray-800 shadow-2xl">
