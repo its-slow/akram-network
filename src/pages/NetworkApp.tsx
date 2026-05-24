@@ -23,15 +23,15 @@ export default function NetworkApp() {
     setDevices(data);
   };
 
+  // الدالة دي بتشتغل سواء "حفظ جديد" أو "تحديث"
   const handleSave = async (formData: any) => {
     if (user) {
-      // دمج بيانات الفورم مع الـ ID في حالة التعديل
       const dataToSave = selectedItem 
         ? { ...formData, cloud_id: selectedItem.cloud_id } 
         : formData;
 
       await saveDeviceToUser(user.uid, dataToSave);
-      setSelectedItem(null); // العودة لوضع الإضافة بعد الحفظ
+      setSelectedItem(null); // قفل وضع التعديل والعودة للوضع الافتراضي
       loadDevices(user.uid);
     }
   };
@@ -54,26 +54,23 @@ export default function NetworkApp() {
   return (
     <div className="min-h-screen bg-[#0b0b0e] text-white p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
         {/* الفورم */}
         <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
-          {/* 
-            ملاحظة: تأكد أن DeviceForm يقوم بتمرير البيانات لدالة onSave 
-            ويستقبل initialData لإظهار البيانات في الخانات
-          */}
-          <<DeviceForm 
-  // الـ key ده هو اللي بيخلي React تمسح الكومبوننت القديم وتبني واحد جديد فاضي
-  key={selectedItem ? selectedItem.cloud_id : "new-form"} 
-  onSave={handleSave} 
-  onUpdate={handleUpdate}
-  onCancelEdit={() => setSelectedItem(null)}
-  initialData={selectedItem} 
-/>
+          <DeviceForm 
+            // الـ key بيضمن إن الفورم يتفرغ تماماً عند التبديل بين العملاء
+            key={selectedItem ? selectedItem.cloud_id : "new-form"} 
+            onSave={handleSave} 
+            onUpdate={handleSave} // أرسلنا handleSave عشان تتصرف مع التحديث
+            onCancelEdit={() => setSelectedItem(null)}
+            initialData={selectedItem} 
+          />
           
           {selectedItem && (
             <div className="mt-4 pt-4 border-t border-gray-700">
               <button 
                 onClick={handleDelete} 
-                className="w-full bg-red-600 p-2 rounded hover:bg-red-700"
+                className="w-full bg-red-600/20 text-red-400 border border-red-900 p-2 rounded hover:bg-red-600 hover:text-white transition-all"
               >
                 مسح الجهاز نهائياً
               </button>
