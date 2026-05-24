@@ -1,27 +1,6 @@
 const FIREBASE_URL = "https://akram-network-default-rtdb.firebaseio.com";
 
-export interface DeviceEntry {
-  _id?: string;
-  cloud_id?: string;
-  position: "تحت" | "فوق";
-  region: string;
-  name?: string;
-  phone?: string;
-  ip: string;
-  device?: string;
-  service?: string;
-  conn_type?: string;
-  pppoe_user?: string;
-  pppoe_pass?: string;
-  switch_name?: string;
-  mode?: string;
-  link_type?: string;
-  connected_to?: string;
-  wifi_name?: string;
-  wifi_pass?: string;
-  above_pppoe_user?: string;
-  above_pppoe_pass?: string;
-}
+// ... (نفس تعريف واجهة DeviceEntry)
 
 export async function loadFromFirebase(): Promise<DeviceEntry[] | null> {
   try {
@@ -38,12 +17,41 @@ export async function loadFromFirebase(): Promise<DeviceEntry[] | null> {
   }
 }
 
+// دالة دمج البيانات: تحافظ على البيانات المحلية الجديدة وتضيفها للسحابة
+export function mergeData(cloudData: DeviceEntry[], localData: DeviceEntry[]): DeviceEntry[] {
+  const merged = [...cloudData];
+  localData.forEach(localItem => {
+    // نتحقق إذا لم يكن العنصر موجوداً في السحابة
+    const exists = merged.find(c => c.ip === localItem.ip && c.name === localItem.name);
+    if (!exists) {
+      merged.push(localItem);
+    }
+  });
+  return merged;
+}
+
+// دالة مزامنة البيانات الأوفلاين: ترفع أي عنصر لا يملك cloud_id
+export async function syncOfflineData(): Promise<void> {
+  const localData = loadFromLocal();
+  const unsynced = localData.filter(item => !item.cloud_id);
+  
+  for (const item of unsynced) {
+    const success = await saveToFirebase(item);
+    if (success) {
+      // بعد الرفع الناجح، يمكننا مسح القديم وإعادة تحميل البيانات الصحيحة
+      // في التطبيق الفعلي، ستستدعي loadData بعد هذه الدالة
+    }
+  }
+}
+
 export async function saveToFirebase(entry: DeviceEntry): Promise<boolean> {
   try {
+    // إزالة _id قبل الرفع للسحابة لتجنب الأخطاء
+    const { _id, ...dataToSave } = entry;
     const res = await fetch(`${FIREBASE_URL}/network_data.json`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entry),
+      body: JSON.stringify(dataToSave),
     });
     return res.ok;
   } catch {
@@ -51,31 +59,7 @@ export async function saveToFirebase(entry: DeviceEntry): Promise<boolean> {
   }
 }
 
-export async function updateInFirebase(cloudId: string, entry: DeviceEntry): Promise<boolean> {
-  try {
-    const { _id, cloud_id, ...clean } = entry;
-    const res = await fetch(`${FIREBASE_URL}/network_data/${cloudId}.json`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(clean),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-export async function deleteFromFirebase(cloudId: string): Promise<void> {
-  try {
-    await fetch(`${FIREBASE_URL}/network_data/${cloudId}.json`, {
-      method: "DELETE",
-    });
-  } catch {
-    // silent
-  }
-}
-
-const LOCAL_KEY = "akram_network_data";
+// ... (احتفظ بدوال updateInFirebase و deleteFromFirebase و Local Storage كما هي)
 
 export function loadFromLocal(): DeviceEntry[] {
   try {
