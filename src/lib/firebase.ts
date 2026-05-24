@@ -1,27 +1,29 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getDatabase } from "firebase/database";
-import { ref, get, push, set } from "firebase/database";
+import { getDatabase, ref, get, push, set } from "firebase/database";
+import { getAnalytics } from "firebase/analytics";
 
-// 1. دي إعدادات مشروعك اللي بتاخدها من Firebase Console -> Project Settings
+// إعدادات مشروعك اللي أنت جبتها
 const firebaseConfig = {
-  apiKey: "AIzaSy...", 
+  apiKey: "AIzaSyBFKXIAamCskr5Zva3AAzlr0xXupodUrbc",
   authDomain: "akram-network.firebaseapp.com",
-  databaseURL: "https://akram-network-default-rtdb.firebaseio.com/",
+  databaseURL: "https://akram-network-default-rtdb.firebaseio.com",
   projectId: "akram-network",
-  storageBucket: "akram-network.appspot.com",
-  messagingSenderId: "...",
-  appId: "..."
+  storageBucket: "akram-network.firebasestorage.app",
+  messagingSenderId: "315698997151",
+  appId: "1:315698997151:web:5ea66b24653778eecaffaa",
+  measurementId: "G-MF4T0NDXNP"
 };
 
-// 2. تهيئة التطبيق
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app); // شغال معاك
 
-// 3. تصدير الخدمات عشان تستخدمها في باقي المشروع
+// تصدير الـ Auth والـ Database عشان تستخدمهم في مشروعك
 export const auth = getAuth(app);
 export const db = getDatabase(app);
 
-// 4. دالة حفظ بيانات العميل (قاعدة عندك)
+// الدوال عشان الشغل يشتغل
 export async function saveDeviceToUser(uid: string, entry: any) {
   const userRef = ref(db, `users/${uid}/devices`);
   const newEntryRef = push(userRef);
@@ -29,7 +31,6 @@ export async function saveDeviceToUser(uid: string, entry: any) {
   return newEntryRef.key;
 }
 
-// 5. دالة جلب بيانات العميل (قاعدة عندك)
 export async function getUserDevices(uid: string) {
   const userRef = ref(db, `users/${uid}/devices`);
   const snapshot = await get(userRef);
